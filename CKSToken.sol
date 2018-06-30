@@ -1,14 +1,54 @@
 pragma solidity ^0.4.20;
 
 contract CKSToken{
+
+  address owner;
+  bool halfSold = false;
+
   struct Member{
     uint balance;
     mapping (address => uint) allowedSpenders;
     address[] arrayOfAllowedSpenders;
   }
   mapping (address => Member) addressToOwners;
+//each unit of token represents 100 units inside the contract. This means this contract has 1000 tokens.
+
+  function() payable{
+    if(!halfSold){
+      uint tokensDemanded = (msg.value/(0.1 ether))*20;
+      if(addressToOwners[owner].balance - tokensDemanded < 50000){
+        sendAtHalfPrice(msg.sender, 50000);
+        sendAtFullPrice(msg.sender, tokensDemanded-50000);
+      }
+      else{
+      sendAtHalfPrice(msg.sender, tokensDemanded);
+      }
+    } else{
+      uint tokens = (msg.value/(0.1 ether))*10;
+      if(addressToOwners[owner].balance - tokens < 0){
+          sendAtFullPrice(msg.sender, addressToOwners[owner].balance);
+          msg.sender.transfer((tokens-addressToOwners[owner].balance)/100 ether);
+      }
+      else{
+        sendAtFullPrice(msg.sender, tokens);
+      }
+    }
+  }
+
+  function sendAtHalfPrice(address _to, uint tokens) internal {
+    addressToOwners[owner].balance-= tokens;
+    addressToOwners[msg.sender].balance+= tokens;
+    Transfer(owner, msg.sender, tokens);
+  }
+
+  function sendAtFullPrice(address _to, uint tokens) internal{
+    addressToOwners[owner].balance-= tokens;
+    addressToOwners[msg.sender].balance+= tokens;
+    Transfer(owner, msg.sender, tokens);
+  }
 
   function CKSToken() public{
+    owner = msg.sender;
     addressToOwners[msg.sender].balance = totalSupply();
   }
   function name() public pure returns (string){
